@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号排版工具 - 风也AI创作</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, 
+                #ff9a56 0%, 
+                #ff6b6b 25%, 
+                #4ecdc4 50%, 
+                #45b7d1 75%, 
+                #96ceb4 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: #333;
+            position: relative;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 云朵效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse 200px 100px at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 50%),
+                radial-gradient(ellipse 300px 150px at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 50%),
+                radial-gradient(ellipse 250px 120px at 60% 70%, rgba(255,255,255,0.25) 0%, transparent 50%),
+                radial-gradient(ellipse 180px 90px at 30% 80%, rgba(255,255,255,0.2) 0%, transparent 50%),
+                radial-gradient(ellipse 220px 110px at 90% 60%, rgba(255,255,255,0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+            animation: cloudFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes cloudFloat {
+            0%, 100% { transform: translateX(0px) translateY(0px); }
+            25% { transform: translateX(10px) translateY(-5px); }
+            50% { transform: translateX(-5px) translateY(5px); }
+            75% { transform: translateX(8px) translateY(-3px); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 100vh;
+            position: relative;
+            z-index: 2;
+        }
+
+        .editor-panel, .preview-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 15px 20px;
+            background: rgba(248, 249, 250, 0.3);
+            backdrop-filter: blur(3px);
+            border-bottom: 1px solid rgba(238, 238, 238, 0.3);
+            font-weight: 600;
+            color: #666;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+            position: relative;
+        }
+
+        .help-btn {
+            position: absolute;
+            top: 12px;
+            right: 20px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .help-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .help-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .help-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .help-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .help-section {
+            margin-bottom: 20px;
+        }
+
+        .help-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .help-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .help-section li {
+            margin: 8px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .help-section .example {
+            color: #666;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* 历史记录侧边栏 */
+        .history-trigger {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 100px;
+            background: rgba(7,193,96,0.1);
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            z-index: 998;
+            transition: all 0.3s ease;
+        }
+
+        .history-trigger:hover {
+            background: rgba(7,193,96,0.3);
+            width: 30px;
+        }
+
+        .history-sidebar {
+            position: fixed;
+            left: -300px;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 2px 0 20px rgba(0,0,0,0.05);
+            z-index: 999;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .history-sidebar.show {
+            left: 0;
+        }
+
+        .history-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(238, 238, 238, 0.3);
+            background: rgba(248, 249, 250, 0.2);
+            backdrop-filter: blur(3px);
+        }
+
+        .history-header h3 {
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .history-header h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .new-article-btn {
+            width: 100%;
+            padding: 8px 16px;
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .new-article-btn:hover {
+            background: #06ad56;
+        }
+
+        .history-list {
+            padding: 0;
+        }
+
+        .history-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(240, 240, 240, 0.3);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .history-title {
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .history-item:hover {
+            background: #f8f9fa;
+        }
+
+        .history-item.active {
+            background: #e8f5e8;
+            border-left: 3px solid #07c160;
+        }
+
+        .history-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .history-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .history-preview {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .delete-btn {
+            float: right;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px 5px;
+        }
+
+        .delete-btn:hover {
+            color: #e74c3c;
+        }
+
+        .save-controls {
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(238, 238, 238, 0.3);
+            background: rgba(248, 249, 250, 0.2);
+            backdrop-filter: blur(3px);
+            display: flex;
+            gap: 10px;
+        }
+
+        .save-btn {
+            flex: 1;
+            padding: 6px 12px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .save-btn:hover {
+            background: #138496;
+        }
+
+        .article-title-input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid rgba(221, 221, 221, 0.5);
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(3px);
+            color: #333;
+        }
+
+        .editor {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #333;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .preview {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            color: #333;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #07c160;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: #06ad56;
+        }
+
+        /* 微信公众号样式 */
+        .wechat-content {
+            max-width: 100%;
+            margin: 0 auto;
+            color: #333;
+            line-height: 1.8;
+        }
+
+        .wechat-content h1 {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0 15px 0;
+            text-align: center;
+            border-bottom: 2px solid #07c160;
+            padding-bottom: 10px;
+        }
+
+        .wechat-content h2 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 25px 0 15px 0;
+            padding-left: 10px;
+            border-left: 4px solid #07c160;
+            background: linear-gradient(90deg, rgba(7,193,96,0.1) 0%, transparent 100%);
+            padding: 8px 0 8px 15px;
+        }
+
+        .wechat-content h3 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #555;
+            margin: 20px 0 10px 0;
+        }
+
+        .wechat-content p {
+            font-size: 15px;
+            line-height: 1.8;
+            margin: 12px 0;
+            text-align: justify;
+            color: #333;
+        }
+
+        .wechat-content blockquote {
+            background: #f8f9fa;
+            border-left: 4px solid #ddd;
+            margin: 15px 0;
+            padding: 15px 20px;
+            font-style: italic;
+            color: #666;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .wechat-content blockquote p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .wechat-content ul, .wechat-content ol {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+
+        .wechat-content li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .wechat-content code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            color: #d73a49;
+        }
+
+        .wechat-content pre {
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .wechat-content pre code {
+            background: none;
+            padding: 0;
+            color: #333;
+        }
+
+        .wechat-content strong {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .wechat-content em {
+            font-style: italic;
+            color: #666;
+        }
+
+        .wechat-content hr {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #ddd, transparent);
+            margin: 25px 0;
+        }
+
+        .wechat-content img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border-radius: 4px;
+        }
+
+        .wechat-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .wechat-content th, .wechat-content td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .wechat-content th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .highlight {
+            background: linear-gradient(180deg, transparent 60%, #fff2cc 60%);
+            padding: 0 2px;
+        }
+
+        /* 文字颜色样式 */
+        .text-red { color: #e74c3c !important; }
+        .text-blue { color: #3498db !important; }
+        .text-green { color: #27ae60 !important; }
+        .text-orange { color: #f39c12 !important; }
+        .text-purple { color: #9b59b6 !important; }
+        .text-pink { color: #e91e63 !important; }
+        .text-gray { color: #7f8c8d !important; }
+        .text-brown { color: #8d6e63 !important; }
+        .text-teal { color: #1abc9c !important; }
+        .text-indigo { color: #6c5ce7 !important; }
+        
+        /* 背景颜色样式 */
+        .bg-yellow { background-color: #fff2cc; padding: 2px 4px; border-radius: 2px; }
+        .bg-red { background-color: #ffebee; padding: 2px 4px; border-radius: 2px; }
+        .bg-blue { background-color: #e3f2fd; padding: 2px 4px; border-radius: 2px; }
+        .bg-green { background-color: #e8f5e8; padding: 2px 4px; border-radius: 2px; }
+        .bg-purple { background-color: #f3e5f5; padding: 2px 4px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-panel">
+            <div class="panel-header">
+                Markdown 编辑器
+                <button class="help-btn" onclick="showHelp()">用法说明</button>
+            </div>
+            <div class="save-controls">
+                <input type="text" class="article-title-input" id="articleTitle" placeholder="文章标题..." value="渔樵问道">
+                <button class="save-btn" onclick="saveArticle()">保存</button>
+            </div>
+            <textarea class="editor" id="markdown-input" placeholder="在这里输入 Markdown 内容..."># 渔樵问道
+
+一日，一樵夫在山间砍柴，偶遇一渔夫在江边垂钓。
+
+樵夫放下斧头，走近问道："{blue}兄台每日在此垂钓，可是为了谋生？{/blue}"
+
+渔夫笑道："{green}谋生亦是，逍遥亦是。{/green}"
+
+樵夫不解："{orange}何谓逍遥？{/orange}"
+
+渔夫指着远山近水，说道：
+
+> "你我皆在这天地之间，你为柴米油盐而辛苦，我亦然。但你每日面朝黄土背朝天，我却能观日出日落，听潮起潮落。你砍柴，是与山林争，我垂钓，是与江水合。你求多，我求精。你求重，我求轻。"
+
+樵夫听罢，沉思半晌，又问："{purple}那你兄台之见，人生当如何？{/purple}"
+
+渔夫收起鱼竿，望着平静的江面，缓缓说道："{red}人生，如这江水，有波澜汹涌时，也有风平浪静时。{bg-yellow}无需强求，无需执着{/bg-yellow}，顺其自然，随心而安。{/red}"
+
+## 颜色使用说明
+
+**文字颜色语法：**
+- {red}红色文字{/red}
+- {blue}蓝色文字{/blue} 
+- {green}绿色文字{/green}
+- {orange}橙色文字{/orange}
+- {purple}紫色文字{/purple}
+- {pink}粉色文字{/pink}
+- {gray}灰色文字{/gray}
+- {brown}棕色文字{/brown}
+- {teal}青色文字{/teal}
+- {indigo}靛蓝文字{/indigo}
+
+**背景颜色语法：**
+- {bg-yellow}黄色背景{/bg-yellow}
+- {bg-red}红色背景{/bg-red}
+- {bg-blue}蓝色背景{/bg-blue}
+- {bg-green}绿色背景{/bg-green}
+- {bg-purple}紫色背景{/bg-purple}
+
+**高亮语法：**
+- ==高亮文字==</textarea>
+        </div>
+        
+        <div class="preview-panel">
+            <div class="panel-header">
+                微信公众号预览
+                <button class="copy-btn" onclick="copyToClipboard()">复制HTML</button>
+            </div>
+            <div class="preview">
+                <div class="wechat-content" id="preview-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录触发区域 -->
+    <div class="history-trigger" onmouseenter="showHistory()" title="悬浮查看历史记录"></div>
+
+    <!-- 历史记录侧边栏 -->
+    <div class="history-sidebar" id="historySidebar" onmouseleave="hideHistory()">
+        <div class="history-header">
+            <h3>📚 文章历史</h3>
+            <button class="new-article-btn" onclick="newArticle()">+ 新建文章</button>
+        </div>
+        <div class="history-list" id="historyList">
+            <!-- 历史记录将在这里动态生成 -->
+        </div>
+    </div>
+
+    <!-- 页面底部标签 -->
+    <div style="position: fixed; bottom: 10px; right: 20px; background: rgba(255,255,255,0.9); padding: 5px 10px; border-radius: 15px; font-size: 12px; color: #666; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 999;">
+        🌪️ 风也AI创作
+    </div>
+
+    <!-- 用法说明弹窗 -->
+    <div class="help-modal" id="helpModal">
+        <div class="help-content">
+            <div class="help-header">
+                <h2>📖 微信公众号排版工具 - 用法说明</h2>
+                <p style="font-size: 12px; color: #999; margin: 0;">🌪️ 风也AI创作</p>
+                <button class="close-btn" onclick="hideHelp()">&times;</button>
+            </div>
+            
+            <div class="help-section">
+                <h3>🎨 文字颜色语法</h3>
+                <ul>
+                    <li>{red}红色文字{/red} <span class="example">→ 显示为红色</span></li>
+                    <li>{blue}蓝色文字{/blue} <span class="example">→ 显示为蓝色</span></li>
+                    <li>{green}绿色文字{/green} <span class="example">→ 显示为绿色</span></li>
+                    <li>{orange}橙色文字{/orange} <span class="example">→ 显示为橙色</span></li>
+                    <li>{purple}紫色文字{/purple} <span class="example">→ 显示为紫色</span></li>
+                    <li>{pink}粉色文字{/pink} <span class="example">→ 显示为粉色</span></li>
+                    <li>{gray}灰色文字{/gray} <span class="example">→ 显示为灰色</span></li>
+                    <li>{brown}棕色文字{/brown} <span class="example">→ 显示为棕色</span></li>
+                    <li>{teal}青色文字{/teal} <span class="example">→ 显示为青色</span></li>
+                    <li>{indigo}靛蓝文字{/indigo} <span class="example">→ 显示为靛蓝色</span></li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>🎯 背景颜色语法</h3>
+                <ul>
+                    <li>{bg-yellow}黄色背景{/bg-yellow} <span class="example">→ 黄色背景</span></li>
+                    <li>{bg-red}红色背景{/bg-red} <span class="example">→ 红色背景</span></li>
+                    <li>{bg-blue}蓝色背景{/bg-blue} <span class="example">→ 蓝色背景</span></li>
+                    <li>{bg-green}绿色背景{/bg-green} <span class="example">→ 绿色背景</span></li>
+                    <li>{bg-purple}紫色背景{/bg-purple} <span class="example">→ 紫色背景</span></li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>✨ 特殊效果</h3>
+                <ul>
+                    <li>==高亮文字== <span class="example">→ 黄色高亮效果</span></li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>📝 标准 Markdown 语法</h3>
+                <ul>
+                    <li># 一级标题 <span class="example">→ 大标题，居中，绿色下划线</span></li>
+                    <li>## 二级标题 <span class="example">→ 中标题，左侧绿色边框</span></li>
+                    <li>### 三级标题 <span class="example">→ 小标题</span></li>
+                    <li>**粗体文字** <span class="example">→ 加粗显示</span></li>
+                    <li>*斜体文字* <span class="example">→ 斜体显示</span></li>
+                    <li>> 引用文字 <span class="example">→ 灰色背景引用块</span></li>
+                    <li>- 无序列表项 <span class="example">→ 圆点列表</span></li>
+                    <li>1. 有序列表项 <span class="example">→ 数字列表</span></li>
+                    <li>`代码` <span class="example">→ 行内代码样式</span></li>
+                    <li>```代码块``` <span class="example">→ 多行代码块</span></li>
+                    <li>--- <span class="example">→ 分割线</span></li>
+                    <li>![图片](链接) <span class="example">→ 插入图片</span></li>
+                    <li>[链接文字](链接地址) <span class="example">→ 超链接</span></li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>🔧 使用技巧</h3>
+                <ul>
+                    <li>可以组合使用：{red}**红色粗体**{/red}</li>
+                    <li>可以嵌套效果：{blue}蓝色{bg-yellow}带背景{/bg-yellow}文字{/blue}</li>
+                    <li>编辑完成后点击"复制HTML"按钮</li>
+                    <li>直接粘贴到微信公众号编辑器即可</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const markdownInput = document.getElementById('markdown-input');
+        const previewContent = document.getElementById('preview-content');
+
+        // 配置 marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        function updatePreview() {
+            const markdown = markdownInput.value;
+            let html = marked.parse(markdown);
+            
+            // 添加高亮效果的处理
+            html = html.replace(/==(.*?)==/g, '<span class="highlight">$1</span>');
+            
+            // 添加文字颜色处理
+            html = html.replace(/\{red\}(.*?)\{\/red\}/g, '<span class="text-red">$1</span>');
+            html = html.replace(/\{blue\}(.*?)\{\/blue\}/g, '<span class="text-blue">$1</span>');
+            html = html.replace(/\{green\}(.*?)\{\/green\}/g, '<span class="text-green">$1</span>');
+            html = html.replace(/\{orange\}(.*?)\{\/orange\}/g, '<span class="text-orange">$1</span>');
+            html = html.replace(/\{purple\}(.*?)\{\/purple\}/g, '<span class="text-purple">$1</span>');
+            html = html.replace(/\{pink\}(.*?)\{\/pink\}/g, '<span class="text-pink">$1</span>');
+            html = html.replace(/\{gray\}(.*?)\{\/gray\}/g, '<span class="text-gray">$1</span>');
+            html = html.replace(/\{brown\}(.*?)\{\/brown\}/g, '<span class="text-brown">$1</span>');
+            html = html.replace(/\{teal\}(.*?)\{\/teal\}/g, '<span class="text-teal">$1</span>');
+            html = html.replace(/\{indigo\}(.*?)\{\/indigo\}/g, '<span class="text-indigo">$1</span>');
+            
+            // 添加背景颜色处理
+            html = html.replace(/\{bg-yellow\}(.*?)\{\/bg-yellow\}/g, '<span class="bg-yellow">$1</span>');
+            html = html.replace(/\{bg-red\}(.*?)\{\/bg-red\}/g, '<span class="bg-red">$1</span>');
+            html = html.replace(/\{bg-blue\}(.*?)\{\/bg-blue\}/g, '<span class="bg-blue">$1</span>');
+            html = html.replace(/\{bg-green\}(.*?)\{\/bg-green\}/g, '<span class="bg-green">$1</span>');
+            html = html.replace(/\{bg-purple\}(.*?)\{\/bg-purple\}/g, '<span class="bg-purple">$1</span>');
+            
+            previewContent.innerHTML = html;
+            addClickToEditListeners();
+        }
+
+        // 为预览区域添加点击跳转功能
+        function addClickToEditListeners() {
+            const previewElements = previewContent.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, blockquote, pre');
+            
+            previewElements.forEach((element, index) => {
+                element.style.cursor = 'pointer';
+                element.style.transition = 'background-color 0.2s ease';
+                
+                element.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = 'rgba(7, 193, 96, 0.1)';
+                });
+                
+                element.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = 'transparent';
+                });
+                
+                element.addEventListener('click', function() {
+                    jumpToMarkdownLine(element);
+                });
+            });
+        }
+
+        // 跳转到对应的Markdown行
+        function jumpToMarkdownLine(clickedElement) {
+            const markdownLines = markdownInput.value.split('\n');
+            const elementText = clickedElement.textContent.trim();
+            
+            // 查找对应的行号
+            let targetLine = -1;
+            let bestMatch = { line: -1, score: 0 };
+            
+            for (let i = 0; i < markdownLines.length; i++) {
+                const line = markdownLines[i].trim();
+                if (!line) continue; // 跳过空行
+                
+                let cleanLine = '';
+                let matchScore = 0;
+                
+                // 处理标题
+                if (clickedElement.tagName.match(/^H[1-6]$/)) {
+                    cleanLine = line.replace(/^#+\s*/, '').replace(/\{[^}]*\}/g, '').trim();
+                    if (cleanLine === elementText) {
+                        targetLine = i;
+                        break;
+                    } else if (cleanLine.includes(elementText) || elementText.includes(cleanLine)) {
+                        matchScore = Math.min(cleanLine.length, elementText.length) / Math.max(cleanLine.length, elementText.length);
+                    }
+                }
+                // 处理段落和其他元素
+                else {
+                    cleanLine = line.replace(/\*\*|\*|`|\{[^}]*\}|>\s*|\d+\.\s*|-\s*/g, '').trim();
+                    
+                    // 精确匹配
+                    if (cleanLine === elementText) {
+                        targetLine = i;
+                        break;
+                    }
+                    
+                    // 计算匹配度
+                    if (cleanLine.length > 0 && elementText.length > 0) {
+                        if (cleanLine.includes(elementText)) {
+                            matchScore = elementText.length / cleanLine.length;
+                        } else if (elementText.includes(cleanLine)) {
+                            matchScore = cleanLine.length / elementText.length;
+                        } else {
+                            // 计算相似度（简单的字符匹配）
+                            const shorter = cleanLine.length < elementText.length ? cleanLine : elementText;
+                            const longer = cleanLine.length >= elementText.length ? cleanLine : elementText;
+                            let commonChars = 0;
+                            for (let j = 0; j < shorter.length; j++) {
+                                if (longer.includes(shorter[j])) commonChars++;
+                            }
+                            matchScore = commonChars / longer.length;
+                        }
+                    }
+                }
+                
+                // 更新最佳匹配
+                if (matchScore > bestMatch.score && matchScore > 0.3) {
+                    bestMatch = { line: i, score: matchScore };
+                }
+            }
+            
+            // 如果没有精确匹配，使用最佳匹配
+            if (targetLine === -1 && bestMatch.line !== -1) {
+                targetLine = bestMatch.line;
+            }
+            
+            // 最后的模糊匹配
+            if (targetLine === -1) {
+                const searchText = elementText.substring(0, 15).replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ''); // 只保留中英文和数字
+                if (searchText.length > 2) {
+                    for (let i = 0; i < markdownLines.length; i++) {
+                        const simpleLine = markdownLines[i].replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+                        if (simpleLine.includes(searchText)) {
+                            targetLine = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (targetLine !== -1) {
+                // 计算光标位置
+                const beforeLines = markdownLines.slice(0, targetLine).join('\n');
+                const cursorPosition = beforeLines.length + (targetLine > 0 ? 1 : 0);
+                
+                // 设置光标位置并聚焦
+                markdownInput.focus();
+                markdownInput.setSelectionRange(cursorPosition, cursorPosition);
+                
+                // 使用更精确的滚动方法
+                scrollToLine(targetLine);
+                
+                // 高亮当前行
+                highlightCurrentLine(targetLine);
+            }
+        }
+        
+        // 精确滚动到指定行
+        function scrollToLine(lineNumber) {
+            // 创建一个临时的测量元素
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.visibility = 'hidden';
+            tempDiv.style.whiteSpace = 'pre';
+            tempDiv.style.font = window.getComputedStyle(markdownInput).font;
+            tempDiv.style.fontSize = window.getComputedStyle(markdownInput).fontSize;
+            tempDiv.style.lineHeight = window.getComputedStyle(markdownInput).lineHeight;
+            tempDiv.style.fontFamily = window.getComputedStyle(markdownInput).fontFamily;
+            document.body.appendChild(tempDiv);
+            
+            // 计算到目标行的实际像素高度
+            const lines = markdownInput.value.split('\n');
+            const textBeforeTarget = lines.slice(0, lineNumber).join('\n');
+            tempDiv.textContent = textBeforeTarget;
+            
+            const actualHeight = tempDiv.offsetHeight;
+            document.body.removeChild(tempDiv);
+            
+            // 滚动到目标位置（居中显示）
+            const scrollTop = actualHeight - markdownInput.clientHeight / 2;
+            markdownInput.scrollTop = Math.max(0, scrollTop);
+        }
+
+        // 高亮当前行（临时效果）
+        function highlightCurrentLine(lineNumber) {
+            // 创建临时高亮效果
+            const lines = markdownInput.value.split('\n');
+            const beforeText = lines.slice(0, lineNumber).join('\n');
+            const currentLine = lines[lineNumber];
+            const afterText = lines.slice(lineNumber + 1).join('\n');
+            
+            // 临时添加背景色提示（通过选中文本实现）
+            const startPos = beforeText.length + (lineNumber > 0 ? 1 : 0);
+            const endPos = startPos + currentLine.length;
+            
+            setTimeout(() => {
+                markdownInput.setSelectionRange(startPos, endPos);
+                setTimeout(() => {
+                    markdownInput.setSelectionRange(startPos, startPos);
+                }, 800);
+            }, 100);
+        }
+
+        function copyToClipboard() {
+            const htmlContent = `<div class="wechat-content">${previewContent.innerHTML}</div>`;
+            
+            // 创建临时元素
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            document.body.appendChild(tempDiv);
+            
+            // 选择内容
+            const range = document.createRange();
+            range.selectNodeContents(tempDiv);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            try {
+                document.execCommand('copy');
+                alert('HTML代码已复制到剪贴板！可以直接粘贴到微信公众号编辑器中。');
+            } catch (err) {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动选择内容复制。');
+            }
+            
+            // 清理
+            document.body.removeChild(tempDiv);
+            selection.removeAllRanges();
+        }
+
+        // 监听输入变化
+        markdownInput.addEventListener('input', updatePreview);
+        
+        // 初始化预览
+        updatePreview();
+
+        // 帮助弹窗功能
+        function showHelp() {
+            document.getElementById('helpModal').style.display = 'block';
+        }
+
+        function hideHelp() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('helpModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideHelp();
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideHelp();
+            }
+        });
+
+        // 文章管理功能
+        let currentArticleId = null;
+        let articles = JSON.parse(localStorage.getItem('wechat-articles') || '{}');
+
+        // 生成文章ID
+        function generateId() {
+            return 'article_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // 保存文章
+        function saveArticle() {
+            const title = document.getElementById('articleTitle').value.trim() || '未命名文章';
+            const content = markdownInput.value;
+            
+            if (!currentArticleId) {
+                currentArticleId = generateId();
+            }
+            
+            articles[currentArticleId] = {
+                id: currentArticleId,
+                title: title,
+                content: content,
+                updateTime: new Date().toLocaleString(),
+                preview: content.substring(0, 50).replace(/[#*>-]/g, '').trim() + '...'
+            };
+            
+            localStorage.setItem('wechat-articles', JSON.stringify(articles));
+            updateHistoryList();
+            
+            // 显示保存成功提示
+            const saveBtn = document.querySelector('.save-btn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '已保存';
+            saveBtn.style.background = '#28a745';
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+                saveBtn.style.background = '#17a2b8';
+            }, 1000);
+        }
+
+        // 新建文章
+        function newArticle() {
+            currentArticleId = null;
+            document.getElementById('articleTitle').value = '';
+            markdownInput.value = '';
+            updatePreview();
+            updateHistoryList();
+            hideHistory();
+        }
+
+        // 加载文章
+        function loadArticle(articleId) {
+            const article = articles[articleId];
+            if (article) {
+                currentArticleId = articleId;
+                document.getElementById('articleTitle').value = article.title;
+                markdownInput.value = article.content;
+                updatePreview();
+                updateHistoryList();
+            }
+            hideHistory();
+        }
+
+        // 删除文章
+        function deleteArticle(articleId, event) {
+            event.stopPropagation();
+            if (confirm('确定要删除这篇文章吗？')) {
+                delete articles[articleId];
+                localStorage.setItem('wechat-articles', JSON.stringify(articles));
+                if (currentArticleId === articleId) {
+                    newArticle();
+                }
+                updateHistoryList();
+            }
+        }
+
+        // 更新历史记录列表
+        function updateHistoryList() {
+            const historyList = document.getElementById('historyList');
+            const articleArray = Object.values(articles).sort((a, b) => new Date(b.updateTime) - new Date(a.updateTime));
+            
+            historyList.innerHTML = articleArray.map(article => `
+                <div class="history-item ${article.id === currentArticleId ? 'active' : ''}" onclick="loadArticle('${article.id}')">
+                    <div class="history-title">
+                        ${article.title}
+                        <button class="delete-btn" onclick="deleteArticle('${article.id}', event)" title="删除">×</button>
+                    </div>
+                    <div class="history-time">${article.updateTime}</div>
+                    <div class="history-preview">${article.preview}</div>
+                </div>
+            `).join('');
+        }
+
+        // 显示历史记录
+        function showHistory() {
+            document.getElementById('historySidebar').classList.add('show');
+        }
+
+        // 隐藏历史记录
+        function hideHistory() {
+            setTimeout(() => {
+                document.getElementById('historySidebar').classList.remove('show');
+            }, 300);
+        }
+
+        // 初始化默认文章
+        function initDefaultArticle() {
+            if (Object.keys(articles).length === 0) {
+                // 如果没有保存的文章，创建默认的渔樵问道文章
+                const defaultId = generateId();
+                articles[defaultId] = {
+                    id: defaultId,
+                    title: '渔樵问道',
+                    content: markdownInput.value,
+                    updateTime: new Date().toLocaleString(),
+                    preview: '一日，一樵夫在山间砍柴，偶遇一渔夫在江边垂钓...'
+                };
+                currentArticleId = defaultId;
+                localStorage.setItem('wechat-articles', JSON.stringify(articles));
+            } else {
+                // 如果有保存的文章，加载最新的一篇
+                const latestArticle = Object.values(articles).sort((a, b) => new Date(b.updateTime) - new Date(a.updateTime))[0];
+                if (latestArticle) {
+                    loadArticle(latestArticle.id);
+                }
+            }
+            updateHistoryList();
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            initDefaultArticle();
+        });
+
+        // 自动保存功能（可选）
+        let autoSaveTimer;
+        markdownInput.addEventListener('input', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                if (currentArticleId && markdownInput.value.trim()) {
+                    saveArticle();
+                }
+            }, 5000); // 5秒后自动保存
+        });
+    </script>
+</body>
+</html>
